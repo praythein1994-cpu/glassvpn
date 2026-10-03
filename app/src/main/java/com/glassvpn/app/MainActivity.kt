@@ -19,6 +19,7 @@ import com.glassvpn.app.ui.screens.SettingsScreen
 import com.glassvpn.app.ui.screens.UpdateUiState
 import com.glassvpn.app.ui.theme.stringsFor
 import com.glassvpn.app.util.Diagnostics
+import com.glassvpn.app.util.CrashReporter
 import com.glassvpn.app.util.PingUtil
 import com.glassvpn.app.util.PrefsManager
 import com.glassvpn.app.util.UpdateChecker
@@ -36,6 +37,7 @@ class MainActivity : ComponentActivity() {
     private val vpnPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
+        CrashReporter.breadcrumb(this, "VPN permission result: ${result.resultCode}")
         if (result.resultCode == Activity.RESULT_OK) {
             pendingServer?.let { vpnManager.connect(it) }
         }
@@ -94,9 +96,11 @@ class MainActivity : ComponentActivity() {
 
             fun doConnect(server: VpnServer) {
                 selectedServer = server
+                CrashReporter.breadcrumb(this@MainActivity, "doConnect(${server.ip}); needsPermission=${vpnManager.needsVpnPermission()}")
                 scope.launch { PrefsManager.setLastServerIp(this@MainActivity, server.ip) }
                 if (vpnManager.needsVpnPermission()) {
                     pendingServer = server
+                    CrashReporter.breadcrumb(this@MainActivity, "requesting VPN permission from system")
                     vpnManager.permissionIntent()?.let { vpnPermissionLauncher.launch(it) }
                 } else {
                     vpnManager.connect(server)

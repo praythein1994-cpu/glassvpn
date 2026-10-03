@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.VpnService
 import android.util.Log
+import com.glassvpn.app.util.CrashReporter
 import de.blinkt.openvpn.core.ConfigParser
 import de.blinkt.openvpn.core.OpenVPNService
 import de.blinkt.openvpn.core.ProfileManager
@@ -37,28 +38,36 @@ class VpnConnectionManager(private val context: Context) : VpnStatus.StateListen
     fun permissionIntent(): Intent? = VpnService.prepare(context)
 
     fun connect(server: VpnServer) {
+        CrashReporter.breadcrumb(context, "connect() called for ${server.ip} (${server.countryShort})")
         try {
             _state.value = VpnConnState.CONNECTING
             _statusText.value = "Connecting..."
             currentServer = server
 
+            CrashReporter.breadcrumb(context, "decoding config...")
             val configStr = VpnGateClient.decodeConfig(server)
+            CrashReporter.breadcrumb(context, "config decoded, ${configStr.length} chars; parsing...")
             val parser = ConfigParser()
             parser.parseConfig(StringReader(configStr))
             val profile = parser.convertProfile()
             profile.mName = "GlassVPN-${server.countryShort}-${server.ip}"
+            CrashReporter.breadcrumb(context, "profile parsed; saving temporary profile...")
 
             // Save profile so OpenVPNService can use it
             ProfileManager.setTemporaryProfile(context, profile)
+            CrashReporter.breadcrumb(context, "profile saved; starting OpenVPN service...")
 
             val intent = Intent(context, OpenVPNService::class.java)
             intent.putExtra(OpenVPNService.EXTRA_START_REASON, "GlassVPN connect")
 
             VPNLaunchHelper.startOpenVpn(profile, context, "GlassVPN connect", true)
-        } catch (e: Exception) {
-            Log.e("VpnConnMgr", "connect failed", e)
+            CrashReporter.breadcrumb(context, "startOpenVpn returned (service starting async)")
+        } catch (t: Throwable) {
+            CrashReporter.breadcrumb(context, "connect() FAILED: ${t::class.java.simpleName}: ${t.message}")
+            Log.e("VpnConnMgr", "connect failed", t)
             _state.value = VpnConnState.DISCONNECTED
-            _statusText.value = "Failed: ${e.message}"
+            _statusText.value = "Failed: ${t.message}"
+            if (t is Error) throw t // don't swallow fatal errors, but we logged breadcrumbs first
         }
     }
 

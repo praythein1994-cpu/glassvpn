@@ -59,6 +59,12 @@ object Diagnostics {
                 sb.appendLine("Last fetch error: $it")
             }
             sb.appendLine()
+            sb.appendLine("--- Crash log (latest uncaught exception) ---")
+            sb.appendLine(CrashReporter.getLatestCrash(context).take(20000))
+            sb.appendLine()
+            sb.appendLine("--- Breadcrumbs (what the app did before the crash) ---")
+            sb.appendLine(CrashReporter.getBreadcrumbs(context).take(10000))
+            sb.appendLine()
             sb.appendLine("--- Logcat (GlassVPN, last 200 lines) ---")
             sb.appendLine(collectLogcat())
             sb.appendLine()
