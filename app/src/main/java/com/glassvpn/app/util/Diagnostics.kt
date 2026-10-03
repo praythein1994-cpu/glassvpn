@@ -6,6 +6,7 @@ import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Environment
 import android.util.Log
+import de.blinkt.openvpn.core.VpnStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -59,6 +60,9 @@ object Diagnostics {
                 sb.appendLine("Last fetch error: $it")
             }
             sb.appendLine()
+            sb.appendLine("--- VPN log (OpenVPN service messages) ---")
+            sb.appendLine(collectVpnLog(context).take(20000))
+            sb.appendLine()
             sb.appendLine("--- Crash log (latest uncaught exception) ---")
             sb.appendLine(CrashReporter.getLatestCrash(context).take(20000))
             sb.appendLine()
@@ -101,6 +105,17 @@ object Diagnostics {
                 if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) add("Ethernet")
             }.joinToString(", ").ifBlank { "unknown" }
         } catch (_: Exception) { "unknown" }
+    }
+
+    private fun collectVpnLog(context: Context): String {
+        return try {
+            val items = VpnStatus.getlogbuffer()
+            if (items.isEmpty()) return "(VPN log is empty)"
+            // Last 120 entries, oldest first
+            items.takeLast(120).joinToString("\n") { it.getString(context) }
+        } catch (e: Exception) {
+            "(VPN log unavailable: ${e.message})"
+        }
     }
 
     private fun collectLogcat(): String {

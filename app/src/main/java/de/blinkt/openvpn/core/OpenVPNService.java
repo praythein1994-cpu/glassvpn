@@ -744,6 +744,12 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
                 VpnStatus.logException("Error generating config file", e);
                 endVpnService();
                 return;
+            } catch (RuntimeException e) {
+                // e.g. CancellationException when the native process died instantly —
+                // don't crash the service thread, report and stop cleanly instead
+                VpnStatus.logException("OpenVPN process failed to start", e);
+                endVpnService();
+                return;
             }
         }
 
