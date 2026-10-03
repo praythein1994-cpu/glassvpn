@@ -12,8 +12,8 @@ android {
         applicationId = "com.glassvpn.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "1.5"
+        versionCode = 7
+        versionName = "1.6"
 
         ndk {
             // arm64 only — drops ~13MB vs shipping 32-bit armeabi-v7a too
