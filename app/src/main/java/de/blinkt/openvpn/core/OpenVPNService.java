@@ -240,7 +240,8 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
     public void onRevoke() {
         VpnStatus.logError(R.string.permission_revoked);
         final OpenVPNManagement managment = mManagement;
-        mCommandHandler.post(() -> managment.stopVPN(false));
+        if (managment != null)
+            mCommandHandler.post(() -> managment.stopVPN(false));
 
         endVpnService();
     }
@@ -528,6 +529,17 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
 
         VpnStatus.addStateListener(this);
         VpnStatus.addByteCountListener(this);
+
+        if (intent != null && DISCONNECT_VPN.equals(intent.getAction())) {
+            // User asked to disconnect: stop the VPN process and shut down
+            final OpenVPNManagement disconnectManagement = mManagement;
+            if (disconnectManagement != null)
+                mCommandHandler.post(() -> disconnectManagement.stopVPN(false));
+            else
+                forceStopOpenVpnProcess();
+            endVpnService();
+            return START_NOT_STICKY;
+        }
 
         if (intent != null && PAUSE_VPN.equals(intent.getAction())) {
             if (mDeviceStateReceiver != null)
