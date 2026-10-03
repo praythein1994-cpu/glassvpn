@@ -33,6 +33,19 @@ data class AppStrings(
     val disconnectedFrom: String,
     val failedToConnect: String,
     val retry: String,
+    val checkForUpdates: String,
+    val checkingForUpdates: String,
+    val upToDate: String,
+    val updateAvailable: String,
+    val downloadAndInstall: String,
+    val downloading: String,
+    val downloadFailed: String,
+    val diagnostics: String,
+    val diagnosticsDesc: String,
+    val exportDiagnostics: String,
+    val diagnosticsSaved: String,
+    val diagnosticsFailed: String,
+    val version: String,
 )
 
 val EnStrings = AppStrings(
@@ -68,6 +81,19 @@ val EnStrings = AppStrings(
     disconnectedFrom = "Disconnected",
     failedToConnect = "Connection failed",
     retry = "Retry",
+    checkForUpdates = "Check for Updates",
+    checkingForUpdates = "Checking…",
+    upToDate = "You're up to date",
+    updateAvailable = "Update available",
+    downloadAndInstall = "Download & Install",
+    downloading = "Downloading…",
+    downloadFailed = "Download failed. Try again.",
+    diagnostics = "Diagnostics",
+    diagnosticsDesc = "Find problems and export a report",
+    exportDiagnostics = "Export diagnostic report (.txt)",
+    diagnosticsSaved = "Report saved to Downloads",
+    diagnosticsFailed = "Could not save report",
+    version = "Version",
 )
 
 val MmStrings = AppStrings(
@@ -103,6 +129,19 @@ val MmStrings = AppStrings(
     disconnectedFrom = "ဖြုတ်လိုက်ပြီ",
     failedToConnect = "ချိတ်ဆက်မှု မအောင်မြင်ပါ",
     retry = "ထပ်ကြိုးစား",
+    checkForUpdates = "အပ်ဒိတ် စစ်ဆေးရန်",
+    checkingForUpdates = "စစ်ဆေးနေသည်…",
+    upToDate = "နောက်ဆုံးဗားရှင်း ဖြစ်နေပါပြီ",
+    updateAvailable = "အပ်ဒိတ် ရရှိနိုင်ပါသည်",
+    downloadAndInstall = "ဒေါင်းလုဒ်ဆွဲပြီး ထည့်သွင်းရန်",
+    downloading = "ဒေါင်းလုဒ်ဆွဲနေသည်…",
+    downloadFailed = "ဒေါင်းလုဒ် မအောင်မြင်ပါ။ ထပ်ကြိုးစားပါ။",
+    diagnostics = "ပြဿနာရှာဖွေရေး",
+    diagnosticsDesc = "ပြဿနာရှာပြီး အစီရင်ခံစာ ထုတ်ရန်",
+    exportDiagnostics = "အစီရင်ခံစာ ထုတ်ရန် (.txt)",
+    diagnosticsSaved = "Downloads ထဲသို့ သိမ်းပြီးပါပြီ",
+    diagnosticsFailed = "သိမ်း၍ မရပါ",
+    version = "ဗားရှင်း",
 )
 
 fun stringsFor(lang: String): AppStrings = if (lang == "my") MmStrings else EnStrings

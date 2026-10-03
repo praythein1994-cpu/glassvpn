@@ -15,6 +15,10 @@ object VpnGateClient {
     // Countries the user asked for (Myanmar rarely has free public servers)
     val TARGET_COUNTRIES = setOf("SG", "TH", "MY", "JP", "US", "PH", "MM")
 
+    /** Last fetch failure description, for the diagnostic report. Null if last fetch OK. */
+    @Volatile var lastError: String? = null
+        private set
+
     private val client = OkHttpClient.Builder()
         .connectTimeout(20, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
@@ -24,9 +28,19 @@ object VpnGateClient {
         try {
             val request = Request.Builder().url(API_URL).build()
             val response = client.newCall(request).execute()
-            val body = response.body?.string() ?: return@withContext emptyList()
+            if (!response.isSuccessful) {
+                lastError = "HTTP ${response.code}"
+                Log.e(TAG, "fetchServers: HTTP ${response.code}")
+                return@withContext emptyList()
+            }
+            val body = response.body?.string() ?: run {
+                lastError = "empty response body"
+                return@withContext emptyList()
+            }
+            lastError = null
             parseCsv(body)
         } catch (e: Exception) {
+            lastError = "${e.javaClass.simpleName}: ${e.message}"
             Log.e(TAG, "fetchServers failed", e)
             emptyList()
         }

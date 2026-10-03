@@ -16,9 +16,12 @@ import com.glassvpn.app.ui.components.IOSTabBar
 import com.glassvpn.app.ui.screens.HomeScreen
 import com.glassvpn.app.ui.screens.ServerListScreen
 import com.glassvpn.app.ui.screens.SettingsScreen
+import com.glassvpn.app.ui.screens.UpdateUiState
 import com.glassvpn.app.ui.theme.stringsFor
+import com.glassvpn.app.util.Diagnostics
 import com.glassvpn.app.util.PingUtil
 import com.glassvpn.app.util.PrefsManager
+import com.glassvpn.app.util.UpdateChecker
 import com.glassvpn.app.vpn.VpnConnState
 import com.glassvpn.app.vpn.VpnConnectionManager
 import com.glassvpn.app.vpn.VpnGateClient
@@ -50,6 +53,9 @@ class MainActivity : ComponentActivity() {
             var servers by remember { mutableStateOf<List<VpnServer>>(emptyList()) }
             var loading by remember { mutableStateOf(false) }
             var selectedServer by remember { mutableStateOf<VpnServer?>(null) }
+            var updateState by remember { mutableStateOf<UpdateUiState>(UpdateUiState.Idle) }
+            var diagMessage by remember { mutableStateOf<String?>(null) }
+            var appVersion by remember { mutableStateOf("1.1") }
 
             val connState by vpnManager.state.collectAsState()
             val statusText by vpnManager.statusText.collectAsState()
@@ -58,6 +64,7 @@ class MainActivity : ComponentActivity() {
             // Load language + servers on start
             LaunchedEffect(Unit) {
                 lang = PrefsManager.getLanguage(this@MainActivity)
+                appVersion = UpdateChecker.currentVersionName(this@MainActivity)
                 loadServers(
                     onResult = { list ->
                         servers = list
@@ -67,7 +74,7 @@ class MainActivity : ComponentActivity() {
                             selectedServer = list.find { it.ip == lastIp } ?: list.firstOrNull()
                         }
                         // Measure real ping in background for top servers
-                        scope.launch { measurePings(list.take(12)) { servers = it } }
+                        scope.launch { measurePings(list) { servers = it } }
                     },
                     setLoading = { loading = it }
                 )
@@ -78,7 +85,7 @@ class MainActivity : ComponentActivity() {
                     loadServers(
                         onResult = { list ->
                             servers = list
-                            scope.launch { measurePings(list.take(12)) { servers = it } }
+                            scope.launch { measurePings(list) { servers = it } }
                         },
                         setLoading = { loading = it }
                     )
@@ -151,6 +158,54 @@ class MainActivity : ComponentActivity() {
                                             )
                                         }
                                     },
+                                    appVersion = appVersion,
+                                    updateState = updateState,
+                                    onCheckUpdate = {
+                                        scope.launch {
+                                            updateState = UpdateUiState.Checking
+                                            val info = UpdateChecker.checkForUpdate(this@MainActivity)
+                                            updateState = if (info != null)
+                                                UpdateUiState.Available(info)
+                                            else
+                                                UpdateUiState.UpToDate
+                                        }
+                                    },
+                                    onDownloadUpdate = { info ->
+                                        scope.launch {
+                                            updateState = UpdateUiState.Downloading(0)
+                                            val file = UpdateChecker.downloadApk(
+                                                this@MainActivity,
+                                                info.downloadUrl
+                                            ) { p ->
+                                                updateState = UpdateUiState.Downloading(p)
+                                            }
+                                            if (file != null) {
+                                                UpdateChecker.installApk(this@MainActivity, file)
+                                                updateState = UpdateUiState.Idle
+                                            } else {
+                                                updateState = UpdateUiState.Failed
+                                            }
+                                        }
+                                    },
+                                    diagMessage = diagMessage,
+                                    onExportDiagnostics = {
+                                        scope.launch {
+                                            val file = Diagnostics.exportToDownloads(
+                                                this@MainActivity,
+                                                Diagnostics.ReportInput(
+                                                    serverCount = servers.size,
+                                                    selectedServerIp = selectedServer?.ip,
+                                                    vpnState = connState.name,
+                                                    vpnStatusText = statusText,
+                                                    lastServerFetchError = VpnGateClient.lastError
+                                                )
+                                            )
+                                            diagMessage = if (file != null)
+                                                "${s.diagnosticsSaved}: ${file.name}"
+                                            else
+                                                s.diagnosticsFailed
+                                        }
+                                    },
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
@@ -182,16 +237,19 @@ class MainActivity : ComponentActivity() {
     }
 
     private suspend fun measurePings(
-        list: List<VpnServer>,
+        fullList: List<VpnServer>,
         onUpdate: (List<VpnServer>) -> Unit
     ) {
-        // Measure in background; update list as results come in
-        val updated = list.toMutableList()
-        for ((i, server) in list.withIndex()) {
+        // Measure in background; merge results into the FULL list (never replace it)
+        val updated = fullList.toMutableList()
+        for (server in fullList.take(12)) {
             val ms = PingUtil.measurePingMs(server.ip)
             if (ms >= 0) {
-                updated[i] = server.copy(measuredPing = ms)
-                onUpdate(updated.toList())
+                val idx = updated.indexOfFirst { it.ip == server.ip }
+                if (idx >= 0) {
+                    updated[idx] = server.copy(measuredPing = ms)
+                    onUpdate(updated.toList())
+                }
             }
         }
     }

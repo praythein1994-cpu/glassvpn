@@ -12,11 +12,12 @@ android {
         applicationId = "com.glassvpn.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            // arm64 only — drops ~13MB vs shipping 32-bit armeabi-v7a too
+            abiFilters += listOf("arm64-v8a")
         }
     }
 
