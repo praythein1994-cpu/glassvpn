@@ -12,8 +12,11 @@ object VpnGateClient {
     private const val TAG = "VpnGateClient"
     private const val API_URL = "http://www.vpngate.net/api/iphone/"
 
-    // Countries the user asked for (Myanmar rarely has free public servers)
-    val TARGET_COUNTRIES = setOf("SG", "TH", "MY", "JP", "US", "PH", "MM")
+    // Preferred countries first; all other VPNGate countries follow (availability changes daily)
+    private val PRIORITY = mapOf(
+        "SG" to 0, "TH" to 1, "MY" to 2, "PH" to 3,
+        "JP" to 4, "KR" to 5, "US" to 6, "MM" to 7
+    )
 
     /** Last fetch failure description, for the diagnostic report. Null if last fetch OK. */
     @Volatile var lastError: String? = null
@@ -55,8 +58,8 @@ object VpnGateClient {
                 // VPNGate CSV: 15 columns, last one is base64 config (no commas inside base64)
                 val parts = line.split(",")
                 if (parts.size < 15) continue
-                val countryShort = parts[6]
-                if (countryShort !in TARGET_COUNTRIES) continue
+                val countryShort = parts[6].trim()
+                if (countryShort.length != 2) continue
                 val configB64 = parts[14]
                 if (configB64.isBlank()) continue
                 // Validate base64 decodes
@@ -76,9 +79,8 @@ object VpnGateClient {
                 )
             } catch (_: Exception) { /* skip bad lines */ }
         }
-        // Sort: by country priority (SG first for Myanmar users), then ping
-        val priority = mapOf("SG" to 0, "TH" to 1, "MY" to 2, "PH" to 3, "JP" to 4, "US" to 5, "MM" to 6)
-        return servers.sortedWith(compareBy({ priority[it.countryShort] ?: 9 }, { it.ping }))
+        // Sort: preferred countries first, then by ping
+        return servers.sortedWith(compareBy({ PRIORITY[it.countryShort] ?: 9 }, { it.ping }))
     }
 
     fun decodeConfig(server: VpnServer): String {

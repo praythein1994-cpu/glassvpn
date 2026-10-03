@@ -33,6 +33,7 @@ import android.net.Uri;
 import android.net.VpnService;
 import android.os.Build;
 import android.os.Bundle;
+import android.content.pm.ServiceInfo;
 import android.os.Handler;
 import android.os.Handler.Callback;
 import android.os.HandlerThread;
@@ -346,7 +347,13 @@ public class OpenVPNService extends VpnService implements StateListener, Callbac
 
         mNotificationManager.notify(notificationId, notification);
 
-        startForeground(notificationId, notification);
+        // Android 14+ requires an explicit foreground service type
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(notificationId, notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        } else {
+            startForeground(notificationId, notification);
+        }
 
         if (lastChannel != null && !channel.equals(lastChannel)) {
             // Cancel old notification
